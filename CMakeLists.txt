@@ -3,4 +3,4 @@ project(nesemu)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(nesemu main.cpp Cpu6502.cpp Cpu6502.h)
+add_executable(nesemu main.cpp Cpu6502.cpp Cpu6502.h Cpu6502_instructions.h)

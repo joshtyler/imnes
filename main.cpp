@@ -3,7 +3,7 @@
 #include <fstream>
 #include <vector>
 
-#include "Cpu6502.h"
+#include "Cpu6502_instructions.h"
 #include "magic_enum.hpp"
 
 size_t getSize(std::string filename)
@@ -32,12 +32,24 @@ int main() {
 
     auto prog = readToVector("6502_functional_test.bin");
 
+    std::cout << prog.size() << std::endl;
+
     for(size_t i=0x400u; i<prog.size(); )
     {
-        auto instr = Cpu6502::instructions[prog[i]];
-        std::cout << magic_enum::enum_name(instr.code) << " (hex 0x" << std::hex << static_cast<unsigned int>(prog[i]) <<", " << std::dec << static_cast<unsigned int>(instr.bytes) << " bytes)\n";
+        auto instr = instructions[prog[i]];
 
-        if(instr.code == Cpu6502::opcode::ILL)
+        uint16_t data{0};
+        for(auto j=1u; j< instr.bytes; j++)
+        {
+            data << 8;
+            data |= prog[i+j];
+        }
+
+        std::cout << magic_enum::enum_name(instr.code) << " ";
+        print_operand(instr, data, std::cout);
+        std::cout << '\n';
+
+        if(instr.code == operation::ILL)
             break;
 
         i+= instr.bytes;
