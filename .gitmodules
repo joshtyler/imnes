@@ -4,3 +4,9 @@
 [submodule "src/thirdparty/fmt"]
 	path = src/thirdparty/fmt
 	url = https://github.com/fmtlib/fmt.git
+[submodule "src/thirdparty/imgui-sfml"]
+	path = src/thirdparty/imgui-sfml
+	url = https://github.com/eliasdaler/imgui-sfml.git
+[submodule "src/thirdparty/imgui"]
+	path = src/thirdparty/imgui
+	url = https://github.com/ocornut/imgui.git

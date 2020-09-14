@@ -3,6 +3,14 @@
 #include <fstream>
 #include <vector>
 
+#include "imgui.h"
+#include "imgui-SFML.h"
+
+#include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/System/Clock.hpp>
+#include <SFML/Window/Event.hpp>
+#include <SFML/Graphics/CircleShape.hpp>
+
 #include <fmt/core.h>
 
 #include "Cpu6502_instructions.h"
@@ -49,7 +57,7 @@ int main() {
             data |= static_cast<uint16_t>(prog[i+j]);
         }
 
-        fmt::print("(0x{:02X} 0x{:04X}) {} \n",prog[i], data, disassemble_instruction(instr, data));
+        fmt::print("(0x{:02X} 0x{:04X}) {} \n", prog[i], data, disassemble_instruction(instr, data));
 
         if(instr.code == operation::ILL)
             break;
@@ -57,7 +65,42 @@ int main() {
         i+= instr.bytes;
     }
 
+    // imGUI SFML Example
+    sf::RenderWindow window(sf::VideoMode(1900, 1100), "ImGui + SFML = <3");
+    window.setFramerateLimit(60);
+    ImGui::SFML::Init(window);
 
+    sf::CircleShape shape(100.f);
+    shape.setFillColor(sf::Color::Green);
+
+    sf::Clock deltaClock;
+    while (window.isOpen()) {
+        sf::Event event;
+        while (window.pollEvent(event)) {
+            ImGui::SFML::ProcessEvent(event);
+
+            if (event.type == sf::Event::Closed) {
+                window.close();
+            }
+        }
+
+        ImGui::SFML::Update(window, deltaClock.restart());
+
+        ImGui::Begin("Hello, world!");
+        ImGui::Button("Look at this pretty button");
+        ImGui::End();
+
+        ImGui::Begin("Test");
+        ImGui::ShowDemoWindow();
+        ImGui::End();
+
+        window.clear();
+        window.draw(shape);
+        ImGui::SFML::Render(window);
+        window.display();
+    }
+
+    ImGui::SFML::Shutdown();
 
     return 0;
 }
