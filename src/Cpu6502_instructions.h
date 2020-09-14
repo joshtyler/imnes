@@ -17,6 +17,9 @@
 #include <ios>
 #include <iomanip>
 
+#include <magic_enum.hpp>
+#include <fmt/core.h>
+
 // http://archive.6502.org/datasheets/rockwell_r650x_r651x.pdf
 // https://wiki.nesdev.com/w/index.php/CPU
 // http://www.oxyron.de/html/opcodes02.html
@@ -98,7 +101,29 @@ enum class addressing_mode
     IND, // Absolute indirect
 };
 
-
+// Disassembly formats are from here http://www.thealmightyguru.com/Games/Hacking/Wiki/index.php/Addressing_Modes
+inline static std::string_view get_format_specifier(addressing_mode mode)
+{
+    switch(mode)
+    {
+        case addressing_mode::ACCUM:
+        case addressing_mode::IMPL: return "{}";
+        case addressing_mode::IMM:  return "{} #${:02X}";
+        case addressing_mode::ABS:  return "{} ${:04X}";
+        case addressing_mode::REL:
+        case addressing_mode::ZP:   return "{} ${:02X}";
+        case addressing_mode::ZPX:  return "{} ${:02X},X";
+        case addressing_mode::ZPY:  return "{} ${:02X},Y";
+        case addressing_mode::ABSX: return "{} ${:04X},X";
+        case addressing_mode::ABSY: return "{} ${:04X},Y";
+        case addressing_mode::INDX: return "{} (${:02X},X)";
+        case addressing_mode::INDY: return "{} (${:02X}),Y";
+        case addressing_mode::IND:  return "{} (${:04X})";
+    }
+    // Could throw for invalid, but for not just return empty to print nothing
+    // Will only happen if someone does something silly like cast an int to the enum
+    return "";
+}
 
 enum class special_duration
 {
@@ -116,63 +141,9 @@ struct instruction
     special_duration special;
 };
 
-void print_operand(instruction instr, uint16_t operand, std::ostream & os)
+inline std::string disassemble_instruction(instruction instr, uint16_t operand)
 {
-    if(instr.mode == addressing_mode::ACCUM || instr.mode == addressing_mode::IMPL)
-    {
-        // No operand to print
-        return;
-    }
-
-    if(instr.mode == addressing_mode::IMM)
-    {
-        // '#' before operand indicates an immediate value, not an address
-        os << '#';
-    }
-
-    if(instr.mode == addressing_mode::INDX || instr.mode == addressing_mode::INDY || instr.mode == addressing_mode::IND)
-    {
-        // Indirect addressing is in brackets
-        os << '(';
-    }
-
-    os << '$'; // Hex
-
-    os << std::hex;
-
-    if(  instr.mode == addressing_mode::IMM ||
-            instr.mode == addressing_mode::ZP ||
-    instr.mode == addressing_mode::ZPX ||
-    instr.mode == addressing_mode::ZPY ||
-    instr.mode == addressing_mode::REL ||
-    instr.mode == addressing_mode::INDX ||
-    instr.mode == addressing_mode::INDY)
-    {
-        os << std::setw(2) << std::setfill('0') << (operand & 0xFF);
-    } else {
-        os << std::setw(4) << std::setfill('0') << operand;
-    }
-
-    #warning "Hacky. Should preserve properly"
-    os << std::dec;
-
-    if( instr.mode == addressing_mode::ZPX ||
-        instr.mode == addressing_mode::INDX )
-    {
-        os << ",X";
-    }
-
-    if( instr.mode == addressing_mode::ZPY ||
-        instr.mode == addressing_mode::INDY )
-    {
-        os << ",Y";
-    }
-
-    if(instr.mode == addressing_mode::INDX || instr.mode == addressing_mode::INDY || instr.mode == addressing_mode::IND)
-    {
-        // Indirect addressing is in brackets
-        os << ")";
-    }
+    return fmt::format(get_format_specifier(instr.mode), magic_enum::enum_name(instr.code), operand);
 }
 
 // The parameters of an illegal instruction are somewhat arbitrary since we don't support them

@@ -3,8 +3,9 @@
 #include <fstream>
 #include <vector>
 
+#include <fmt/core.h>
+
 #include "Cpu6502_instructions.h"
-#include "magic_enum.hpp"
 
 size_t getSize(const std::string &filename)
 {
@@ -31,6 +32,8 @@ std::vector<uint8_t> readToVector(const std::string &filename)
 int main() {
     std::cout << "Hello, World!" << std::endl;
 
+    fmt::print("Hello from fmt\n");
+
     auto prog = readToVector("6502_functional_test.bin");
 
     std::cout << prog.size() << std::endl;
@@ -46,9 +49,7 @@ int main() {
             data |= static_cast<uint16_t>(prog[i+j]);
         }
 
-        std::cout << magic_enum::enum_name(instr.code) << " ";
-        print_operand(instr, data, std::cout);
-        std::cout << '\n';
+        fmt::print("(0x{:02X} 0x{:04X}) {} \n",prog[i], data, disassemble_instruction(instr, data));
 
         if(instr.code == operation::ILL)
             break;
