@@ -1,58 +1,34 @@
 #ifndef DISASSEMBLY_VIEW_H
 #define DISASSEMBLY_VIEW_H
 
-#include <stdio.h>      // sprintf, scanf
-#include <stdint.h>     // uint8_t, etc.
+#include <cstdio>
+#include <cstdint>
 
 struct disassembly_view
 {
     // Settings
-    bool            Open;                                       // = true   // set to false when DrawWindow() was closed. ignore if not using DrawWindow().
-    bool            ReadOnly;                                   // = false  // disable any editing.
-    int             Cols;                                       // = 16     // number of columns to display.
-    bool            OptShowOptions;                             // = true   // display options button/context menu. when disabled, options will be locked unless you provide your own UI for them.
-    bool            OptGreyOutZeroes;                           // = true   // display null/zero bytes using the TextDisabled color.
-    bool            OptUpperCaseHex;                            // = true   // display hexadecimal values as "FF" instead of "ff".
-    int             OptMidColsCount;                            // = 8      // set to 0 to disable extra spacing between every mid-cols.
-    int             OptAddrDigitsCount;                         // = 0      // number of addr digits to display (default calculated based on maximum displayed addr).
-    ImU32           HighlightColor;                             //          // background color of highlighted bytes.
-    ImU8            (*ReadFn)(const ImU8* data, size_t off);    // = 0      // optional handler to read bytes.
-    void            (*WriteFn)(ImU8* data, size_t off, ImU8 d); // = 0      // optional handler to write bytes.
-    bool            (*HighlightFn)(const ImU8* data, size_t off);//= 0      // optional handler to return Highlight property (to support non-contiguous highlighting).
+    bool            Open = true;                                // set to false when DrawWindow() was closed. ignore if not using DrawWindow().
+    bool            ReadOnly = false;                           // disable any editing.
+    int             Cols = 16;                                  // number of columns to display.
+    bool            OptShowOptions = true;                      // display options button/context menu. when disabled, options will be locked unless you provide your own UI for them.
+    bool            OptGreyOutZeroes = true;                    // = true   // display null/zero bytes using the TextDisabled color.
+    bool            OptUpperCaseHex = true;                     // display hexadecimal values as "FF" instead of "ff".
+    int             OptMidColsCount = 8;                        // set to 0 to disable extra spacing between every mid-cols.
+    int             OptAddrDigitsCount = 0;                     // number of addr digits to display (default calculated based on maximum displayed addr).
+    ImU32           HighlightColor = IM_COL32(255, 255, 255, 50); // background color of highlighted bytes.
+    ImU8            (*ReadFn)(const ImU8* data, size_t off) = NULL;             // optional handler to read bytes.
+    void            (*WriteFn)(ImU8* data, size_t off, ImU8 d) = NULL;          // optional handler to write bytes.
+    bool            (*HighlightFn)(const ImU8* data, size_t off) = NULL;        // optional handler to return Highlight property (to support non-contiguous highlighting).
 
     // [Internal State]
-    bool            ContentsWidthChanged;
-    size_t          DataEditingAddr;
-    bool            DataEditingTakeFocus;
-    char            DataInputBuf[32];
-    char            AddrInputBuf[32];
-    size_t          GotoAddr;
-    size_t          HighlightMin, HighlightMax;
-
-    disassembly_view()
-    {
-        // Settings
-        Open = true;
-        ReadOnly = false;
-        Cols = 16;
-        OptShowOptions = true;
-        OptGreyOutZeroes = true;
-        OptUpperCaseHex = true;
-        OptMidColsCount = 8;
-        OptAddrDigitsCount = 0;
-        HighlightColor = IM_COL32(255, 255, 255, 50);
-        ReadFn = NULL;
-        WriteFn = NULL;
-        HighlightFn = NULL;
-
-        // State/Internals
-        ContentsWidthChanged = false;
-        DataEditingTakeFocus = false;
-        memset(DataInputBuf, 0, sizeof(DataInputBuf));
-        memset(AddrInputBuf, 0, sizeof(AddrInputBuf));
-        GotoAddr = (size_t)-1;
-        HighlightMin = HighlightMax = (size_t)-1;
-    }
+    bool            ContentsWidthChanged = false;
+    size_t          DataEditingAddr = false;
+    bool            DataEditingTakeFocus = false;
+    char            DataInputBuf[32] = {0};
+    char            AddrInputBuf[32] = {0};
+    size_t          GotoAddr = (size_t)-1;
+    size_t          HighlightMin = (size_t)-1;
+    size_t          HighlightMax = (size_t)-1;
 
     void GotoAddrAndHighlight(size_t addr_min, size_t addr_max)
     {
