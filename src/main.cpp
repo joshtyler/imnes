@@ -13,6 +13,9 @@
 
 #include <fmt/core.h>
 
+#include "imgui_memory_editor.h"
+#include "disassembly_view.h"
+
 #include "Cpu6502_instructions.h"
 
 size_t getSize(const std::string &filename)
@@ -43,6 +46,12 @@ int main() {
     fmt::print("Hello from fmt\n");
 
     auto prog = readToVector("6502_functional_test.bin");
+
+    if(prog.size() == 0)
+    {
+        std::cerr << "Could not open file\n";
+        exit(1);
+    }
 
     std::cout << prog.size() << std::endl;
 
@@ -90,9 +99,16 @@ int main() {
         ImGui::Button("Look at this pretty button");
         ImGui::End();
 
-        ImGui::Begin("Test");
+        //ImGui::Begin("Test");
         ImGui::ShowDemoWindow();
-        ImGui::End();
+        //ImGui::End();
+
+        static MemoryEditor mem_edit_1;
+        mem_edit_1.DrawWindow("Memory Editor", prog.data(), prog.size()*sizeof(prog[0]), 0x0000);
+
+        static disassembly_view disasm_view;
+        disasm_view.DrawWindow("Disassembly view", prog.data(), prog.size()*sizeof(prog[0]), 0x0000);
+
 
         window.clear();
         window.draw(shape);
