@@ -13,7 +13,6 @@ struct disassembly_view
     bool            OptShowOptions = true;                      // display options button/context menu. when disabled, options will be locked unless you provide your own UI for them.
     bool            OptGreyOutZeroes = true;                    // = true   // display null/zero bytes using the TextDisabled color.
     bool            OptUpperCaseHex = true;                     // display hexadecimal values as "FF" instead of "ff".
-    int             OptMidColsCount = 8;                        // set to 0 to disable extra spacing between every mid-cols.
     int             OptAddrDigitsCount = 0;                     // number of addr digits to display (default calculated based on maximum displayed addr).
     ImU32           HighlightColor = IM_COL32(255, 255, 255, 50); // background color of highlighted bytes.
     ImU8            (*ReadFn)(const ImU8* data, size_t off) = NULL;             // optional handler to read bytes.
@@ -61,7 +60,6 @@ struct disassembly_view
         s.LineHeight = ImGui::GetTextLineHeight();
         s.GlyphWidth = ImGui::CalcTextSize("F").x + 1;                  // We assume the font is mono-space
         s.HexCellWidth = (float)(int)(s.GlyphWidth * 2.5f);             // "FF " we include trailing space in the width to easily catch clicks everywhere
-        s.SpacingBetweenMidCols = (float)(int)(s.HexCellWidth * 0.25f); // Every OptMidColsCount columns we add a bit of extra spacing
         s.PosHexStart = (s.AddrDigitsCount + 2) * s.GlyphWidth;
         s.PosHexEnd = s.PosHexStart + (s.HexCellWidth * Cols);
         s.WindowWidth = s.PosHexEnd + style.ScrollbarSize + style.WindowPadding.x * 2 + s.GlyphWidth;
@@ -160,8 +158,6 @@ struct disassembly_view
             for (int n = 0; n < Cols && addr < mem_size; n++, addr++)
             {
                 float byte_pos_x = s.PosHexStart + s.HexCellWidth * n;
-                if (OptMidColsCount > 0)
-                    byte_pos_x += (float)(n / OptMidColsCount) * s.SpacingBetweenMidCols;
                 ImGui::SameLine(byte_pos_x);
 
                 // Draw highlight
@@ -175,8 +171,6 @@ struct disassembly_view
                     if (is_next_byte_highlighted || (n + 1 == Cols))
                     {
                         highlight_width = s.HexCellWidth;
-                        if (OptMidColsCount > 0 && n > 0 && (n + 1) < Cols && ((n + 1) % OptMidColsCount) == 0)
-                            highlight_width += s.SpacingBetweenMidCols;
                     }
                     draw_list->AddRectFilled(pos, ImVec2(pos.x + highlight_width, pos.y + s.LineHeight), HighlightColor);
                 }
