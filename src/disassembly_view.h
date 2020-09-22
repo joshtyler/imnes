@@ -1,30 +1,11 @@
 #ifndef DISASSEMBLY_VIEW_H
 #define DISASSEMBLY_VIEW_H
 
-#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
-#define _CRT_SECURE_NO_WARNINGS
-#endif
 #include <stdio.h>      // sprintf, scanf
 #include <stdint.h>     // uint8_t, etc.
 
-#ifdef _MSC_VER
-#define _PRISizeT   "I"
-#define ImSnprintf  _snprintf
-#else
-#define _PRISizeT   "z"
-#define ImSnprintf  snprintf
-#endif
-
 struct disassembly_view
 {
-    enum DataFormat
-    {
-        DataFormat_Bin = 0,
-        DataFormat_Dec = 1,
-        DataFormat_Hex = 2,
-        DataFormat_COUNT
-    };
-
     // Settings
     bool            Open;                                       // = true   // set to false when DrawWindow() was closed. ignore if not using DrawWindow().
     bool            ReadOnly;                                   // = false  // disable any editing.
@@ -189,8 +170,8 @@ struct disassembly_view
         const ImU32 color_text = ImGui::GetColorU32(ImGuiCol_Text);
         const ImU32 color_disabled = OptGreyOutZeroes ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : color_text;
 
-        const char* format_address = OptUpperCaseHex ? "%0*" _PRISizeT "X: " : "%0*" _PRISizeT "x: ";
-        const char* format_data = OptUpperCaseHex ? "%0*" _PRISizeT "X" : "%0*" _PRISizeT "x";
+        const char* format_address = OptUpperCaseHex ? "%0*zX: " : "%0*zx: ";
+        const char* format_data = OptUpperCaseHex ? "%0*zX" : "%0*zx";
         const char* format_byte = OptUpperCaseHex ? "%02X" : "%02x";
         const char* format_byte_space = OptUpperCaseHex ? "%02X " : "%02x ";
 
@@ -328,7 +309,7 @@ struct disassembly_view
     {
         IM_UNUSED(mem_data);
         ImGuiStyle& style = ImGui::GetStyle();
-        const char* format_range = OptUpperCaseHex ? "Range %0*" _PRISizeT "X..%0*" _PRISizeT "X" : "Range %0*" _PRISizeT "x..%0*" _PRISizeT "x";
+        const char* format_range = OptUpperCaseHex ? "Range %0*zX..%0*zX" : "Range %0*zx..%0*zx";
 
         // Options menu
         if (ImGui::Button("Options"))
@@ -351,7 +332,7 @@ struct disassembly_view
         if (ImGui::InputText("##addr", AddrInputBuf, 32, ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue))
         {
             size_t goto_addr;
-            if (sscanf(AddrInputBuf, "%" _PRISizeT "X", &goto_addr) == 1)
+            if (sscanf(AddrInputBuf, "%zX", &goto_addr) == 1)
             {
                 GotoAddr = goto_addr - base_display_addr;
                 HighlightMin = HighlightMax = (size_t)-1;
@@ -373,8 +354,5 @@ struct disassembly_view
         }
     }
 };
-
-#undef _PRISizeT
-#undef ImSnprintf
 
 #endif
