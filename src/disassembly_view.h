@@ -30,7 +30,6 @@ struct disassembly_view
     bool            ReadOnly;                                   // = false  // disable any editing.
     int             Cols;                                       // = 16     // number of columns to display.
     bool            OptShowOptions;                             // = true   // display options button/context menu. when disabled, options will be locked unless you provide your own UI for them.
-    bool            OptShowHexII;                               // = false  // display values in HexII representation instead of regular hexadecimal: hide null/zero bytes, ascii values as ".X".
     bool            OptGreyOutZeroes;                           // = true   // display null/zero bytes using the TextDisabled color.
     bool            OptUpperCaseHex;                            // = true   // display hexadecimal values as "FF" instead of "ff".
     int             OptMidColsCount;                            // = 8      // set to 0 to disable extra spacing between every mid-cols.
@@ -56,7 +55,6 @@ struct disassembly_view
         ReadOnly = false;
         Cols = 16;
         OptShowOptions = true;
-        OptShowHexII = false;
         OptGreyOutZeroes = true;
         OptUpperCaseHex = true;
         OptMidColsCount = 8;
@@ -289,24 +287,10 @@ struct disassembly_view
                     // NB: The trailing space is not visible but ensure there's no gap that the mouse cannot click on.
                     ImU8 b = ReadFn ? ReadFn(mem_data, addr) : mem_data[addr];
 
-                    if (OptShowHexII)
-                    {
-                        if ((b >= 32 && b < 128))
-                            ImGui::Text(".%c ", b);
-                        else if (b == 0xFF && OptGreyOutZeroes)
-                            ImGui::TextDisabled("## ");
-                        else if (b == 0x00)
-                            ImGui::Text("   ");
-                        else
-                            ImGui::Text(format_byte_space, b);
-                    }
+                    if (b == 0 && OptGreyOutZeroes)
+                        ImGui::TextDisabled("00 ");
                     else
-                    {
-                        if (b == 0 && OptGreyOutZeroes)
-                            ImGui::TextDisabled("00 ");
-                        else
-                            ImGui::Text(format_byte_space, b);
-                    }
+                        ImGui::Text(format_byte_space, b);
                     if (!ReadOnly && ImGui::IsItemHovered() && ImGui::IsMouseClicked(0))
                     {
                         DataEditingTakeFocus = true;
@@ -354,7 +338,6 @@ struct disassembly_view
             ImGui::PushItemWidth(56);
             if (ImGui::DragInt("##cols", &Cols, 0.2f, 4, 32, "%d cols")) { ContentsWidthChanged = true; if (Cols < 1) Cols = 1; }
             ImGui::PopItemWidth();
-            ImGui::Checkbox("Show HexII", &OptShowHexII);
             ImGui::Checkbox("Grey out zeroes", &OptGreyOutZeroes);
             ImGui::Checkbox("Uppercase Hex", &OptUpperCaseHex);
 
