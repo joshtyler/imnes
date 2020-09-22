@@ -31,7 +31,6 @@ struct disassembly_view
     int             Cols;                                       // = 16     // number of columns to display.
     bool            OptShowOptions;                             // = true   // display options button/context menu. when disabled, options will be locked unless you provide your own UI for them.
     bool            OptShowHexII;                               // = false  // display values in HexII representation instead of regular hexadecimal: hide null/zero bytes, ascii values as ".X".
-    bool            OptShowAscii;                               // = true   // display ASCII representation on the right side.
     bool            OptGreyOutZeroes;                           // = true   // display null/zero bytes using the TextDisabled color.
     bool            OptUpperCaseHex;                            // = true   // display hexadecimal values as "FF" instead of "ff".
     int             OptMidColsCount;                            // = 8      // set to 0 to disable extra spacing between every mid-cols.
@@ -58,7 +57,6 @@ struct disassembly_view
         Cols = 16;
         OptShowOptions = true;
         OptShowHexII = false;
-        OptShowAscii = true;
         OptGreyOutZeroes = true;
         OptUpperCaseHex = true;
         OptMidColsCount = 8;
@@ -93,8 +91,6 @@ struct disassembly_view
         float   SpacingBetweenMidCols;
         float   PosHexStart;
         float   PosHexEnd;
-        float   PosAsciiStart;
-        float   PosAsciiEnd;
         float   WindowWidth;
 
         Sizes() { memset(this, 0, sizeof(*this)); }
@@ -113,15 +109,7 @@ struct disassembly_view
         s.SpacingBetweenMidCols = (float)(int)(s.HexCellWidth * 0.25f); // Every OptMidColsCount columns we add a bit of extra spacing
         s.PosHexStart = (s.AddrDigitsCount + 2) * s.GlyphWidth;
         s.PosHexEnd = s.PosHexStart + (s.HexCellWidth * Cols);
-        s.PosAsciiStart = s.PosAsciiEnd = s.PosHexEnd;
-        if (OptShowAscii)
-        {
-            s.PosAsciiStart = s.PosHexEnd + s.GlyphWidth * 1;
-            if (OptMidColsCount > 0)
-                s.PosAsciiStart += (float)((Cols + OptMidColsCount - 1) / OptMidColsCount) * s.SpacingBetweenMidCols;
-            s.PosAsciiEnd = s.PosAsciiStart + Cols * s.GlyphWidth;
-        }
-        s.WindowWidth = s.PosAsciiEnd + style.ScrollbarSize + style.WindowPadding.x * 2 + s.GlyphWidth;
+        s.WindowWidth = s.PosHexEnd + style.ScrollbarSize + style.WindowPadding.x * 2 + s.GlyphWidth;
     }
 
     // Standalone Memory Editor window
@@ -200,9 +188,6 @@ struct disassembly_view
 
         // Draw vertical separator
         ImVec2 window_pos = ImGui::GetWindowPos();
-        if (OptShowAscii)
-            draw_list->AddLine(ImVec2(window_pos.x + s.PosAsciiStart - s.GlyphWidth, window_pos.y), ImVec2(window_pos.x + s.PosAsciiStart - s.GlyphWidth, window_pos.y + 9999), ImGui::GetColorU32(ImGuiCol_Border));
-
         const ImU32 color_text = ImGui::GetColorU32(ImGuiCol_Text);
         const ImU32 color_disabled = OptGreyOutZeroes ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : color_text;
 
@@ -329,33 +314,6 @@ struct disassembly_view
                     }
                 }
             }
-
-            if (OptShowAscii)
-            {
-                // Draw ASCII values
-                ImGui::SameLine(s.PosAsciiStart);
-                ImVec2 pos = ImGui::GetCursorScreenPos();
-                addr = line_i * Cols;
-                ImGui::PushID(line_i);
-                if (ImGui::InvisibleButton("ascii", ImVec2(s.PosAsciiEnd - s.PosAsciiStart, s.LineHeight)))
-                {
-                    DataEditingAddr = addr + (size_t)((ImGui::GetIO().MousePos.x - pos.x) / s.GlyphWidth);
-                    DataEditingTakeFocus = true;
-                }
-                ImGui::PopID();
-                for (int n = 0; n < Cols && addr < mem_size; n++, addr++)
-                {
-                    if (addr == DataEditingAddr)
-                    {
-                        draw_list->AddRectFilled(pos, ImVec2(pos.x + s.GlyphWidth, pos.y + s.LineHeight), ImGui::GetColorU32(ImGuiCol_FrameBg));
-                        draw_list->AddRectFilled(pos, ImVec2(pos.x + s.GlyphWidth, pos.y + s.LineHeight), ImGui::GetColorU32(ImGuiCol_TextSelectedBg));
-                    }
-                    unsigned char c = ReadFn ? ReadFn(mem_data, addr) : mem_data[addr];
-                    char display_c = (c < 32 || c >= 128) ? '.' : c;
-                    draw_list->AddText(pos, (display_c == '.') ? color_disabled : color_text, &display_c, &display_c + 1);
-                    pos.x += s.GlyphWidth;
-                }
-            }
         }
         clipper.End();
         ImGui::PopStyleVar(2);
@@ -397,7 +355,6 @@ struct disassembly_view
             if (ImGui::DragInt("##cols", &Cols, 0.2f, 4, 32, "%d cols")) { ContentsWidthChanged = true; if (Cols < 1) Cols = 1; }
             ImGui::PopItemWidth();
             ImGui::Checkbox("Show HexII", &OptShowHexII);
-            if (ImGui::Checkbox("Show Ascii", &OptShowAscii)) { ContentsWidthChanged = true; }
             ImGui::Checkbox("Grey out zeroes", &OptGreyOutZeroes);
             ImGui::Checkbox("Uppercase Hex", &OptUpperCaseHex);
 
