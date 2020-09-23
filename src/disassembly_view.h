@@ -10,18 +10,16 @@ struct disassembly_view
     // Settings
     bool            Open = true;                                // set to false when DrawWindow() was closed. ignore if not using DrawWindow().
     bool            ReadOnly = false;                           // disable any editing.
-    unsigned int    Cols = 16;                                  // number of columns to display.
+    unsigned int    MaxCols = 3;                                // Max number of columns per instruction
+    unsigned int    MaxDisasmChars = 16;                         // Max number of columns per instruction
     bool            OptShowOptions = true;                      // display options button/context menu. when disabled, options will be locked unless you provide your own UI for them.
-    bool            OptGreyOutZeroes = true;                    // = true   // display null/zero bytes using the TextDisabled color.
+    bool            OptGreyOutZeroes = true;                    // display null/zero bytes using the TextDisabled color.
     bool            OptUpperCaseHex = true;                     // display hexadecimal values as "FF" instead of "ff".
     unsigned int    OptAddrDigitsCount = 0;                     // number of addr digits to display (default calculated based on maximum displayed addr).
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wold-style-cast"
     ImU32           HighlightColor = IM_COL32(255, 255, 255, 50); // background color of highlighted bytes. NOLINT(hicpp-signed-bitwise)
 #pragma clang diagnostic pop
-    ImU8            (*ReadFn)(const ImU8* data, size_t off) = nullptr;             // optional handler to read bytes.
-    void            (*WriteFn)(ImU8* data, size_t off, ImU8 d) = nullptr;          // optional handler to write bytes.
-    bool            (*HighlightFn)(const ImU8* data, size_t off) = nullptr;        // optional handler to return Highlight property (to support non-contiguous highlighting).
 
     // [Internal State]
     bool            ContentsWidthChanged = false;
@@ -49,6 +47,8 @@ struct disassembly_view
         float   SpacingBetweenMidCols= 0.0;
         float   PosHexStart= 0.0;
         float   PosHexEnd= 0.0;
+        float   PosDisasmStart = 0.0;
+        float   PosDisasmEnd = 0.0;
         float   WindowWidth= 0.0;
     };
 
@@ -62,9 +62,14 @@ struct disassembly_view
         s.LineHeight = ImGui::GetTextLineHeight();
         s.GlyphWidth = ImGui::CalcTextSize("F").x + 1;             // We assume the font is mono-space
         s.HexCellWidth = truncf(s.GlyphWidth * 2.5f);             // "FF " we include trailing space in the width to easily catch clicks everywhere
+
         s.PosHexStart = static_cast<float>(s.AddrDigitsCount + 2) * s.GlyphWidth;
-        s.PosHexEnd = s.PosHexStart + (s.HexCellWidth * static_cast<float>(Cols));
-        s.WindowWidth = s.PosHexEnd + style.ScrollbarSize + style.WindowPadding.x * 2 + s.GlyphWidth;
+        s.PosHexEnd = s.PosHexStart + (s.HexCellWidth * static_cast<float>(MaxCols));
+
+        s.PosDisasmStart = s.PosHexEnd  + s.GlyphWidth; // Give 1 char of space betweeen hex and disasm
+        s.PosDisasmEnd = s.PosDisasmStart + static_cast<float>(MaxDisasmChars) * s.GlyphWidth;
+
+        s.WindowWidth = s.PosDisasmEnd + style.ScrollbarSize + style.WindowPadding.x * 2 + s.GlyphWidth;
     }
 
     // Standalone Memory Editor window
@@ -92,8 +97,8 @@ struct disassembly_view
     // Memory Editor contents only
     void DrawContents(uint8_t* mem_data_void, size_t mem_size, size_t base_display_addr = 0x0000)
     {
-        if (Cols < 1)
-            Cols = 1;
+        if (MaxCols < 1)
+            MaxCols = 1;
 
         ImU8* mem_data = mem_data_void;
         Sizes s;
@@ -112,10 +117,10 @@ struct disassembly_view
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
-        const size_t line_total_count = (mem_size + Cols - 1) / Cols;
+        const size_t line_total_count = (mem_size + MaxCols - 1) / MaxCols;
         ImGuiListClipper clipper(static_cast<int>(line_total_count), s.LineHeight);
-        const size_t visible_start_addr = static_cast<size_t>(clipper.DisplayStart) * Cols;
-        const size_t visible_end_addr =static_cast<size_t>( clipper.DisplayEnd) * Cols;
+        const size_t visible_start_addr = static_cast<size_t>(clipper.DisplayStart) * MaxCols;
+        const size_t visible_end_addr = static_cast<size_t>( clipper.DisplayEnd) * MaxCols;
 
         bool data_next = false;
 
@@ -127,40 +132,39 @@ struct disassembly_view
         if (DataEditingAddr != std::numeric_limits<std::size_t>::max())
         {
             // Move cursor but only apply on next frame so scrolling with be synchronized (because currently we can't change the scrolling while the window is being rendered)
-            if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow)) && DataEditingAddr >= static_cast<size_t>(Cols))         { data_editing_addr_next = DataEditingAddr - Cols; DataEditingTakeFocus = true; }
-            else if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow)) && DataEditingAddr < mem_size - Cols) { data_editing_addr_next = DataEditingAddr + Cols; DataEditingTakeFocus = true; }
+            if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow)) && DataEditingAddr >= static_cast<size_t>(MaxCols))         { data_editing_addr_next = DataEditingAddr - MaxCols; DataEditingTakeFocus = true; }
+            else if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow)) && DataEditingAddr < mem_size - MaxCols) { data_editing_addr_next = DataEditingAddr + MaxCols; DataEditingTakeFocus = true; }
             else if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)) && DataEditingAddr > 0)               { data_editing_addr_next = DataEditingAddr - 1; DataEditingTakeFocus = true; }
             else if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow)) && DataEditingAddr < mem_size - 1)   { data_editing_addr_next = DataEditingAddr + 1; DataEditingTakeFocus = true; }
         }
-        if (data_editing_addr_next != std::numeric_limits<std::size_t>::max() && (data_editing_addr_next / Cols) != (data_editing_addr_backup / Cols))
+        if (data_editing_addr_next != std::numeric_limits<std::size_t>::max() && (data_editing_addr_next / MaxCols) != (data_editing_addr_backup / MaxCols))
         {
             // Track cursor movements
-            const int scroll_offset = (static_cast<int>(data_editing_addr_next / Cols) - static_cast<int>(data_editing_addr_backup / Cols));
-            const bool scroll_desired = (scroll_offset < 0 && data_editing_addr_next < visible_start_addr + Cols * 2) || (scroll_offset > 0 && data_editing_addr_next > visible_end_addr - Cols * 2);
+            const int scroll_offset = (static_cast<int>(data_editing_addr_next / MaxCols) - static_cast<int>(data_editing_addr_backup / MaxCols));
+            const bool scroll_desired = (scroll_offset < 0 && data_editing_addr_next < visible_start_addr + MaxCols * 2) || (scroll_offset > 0 && data_editing_addr_next > visible_end_addr - MaxCols * 2);
             if (scroll_desired)
                 ImGui::SetScrollY(ImGui::GetScrollY() + static_cast<float>(scroll_offset) * s.LineHeight);
         }
 
         for (int line_i = clipper.DisplayStart; line_i < clipper.DisplayEnd; line_i++) // display only visible lines
         {
-            size_t addr = static_cast<size_t>(line_i) * Cols;
+            size_t addr = static_cast<size_t>(line_i) * MaxCols;
             ImGui::Text((OptUpperCaseHex ? "%0*zX: " : "%0*zx: "), s.AddrDigitsCount, base_display_addr + addr);
 
             // Draw Hexadecimal
-            for (size_t n = 0u; n < static_cast<size_t>(Cols) && addr < mem_size; n++, addr++)
+            for (size_t n = 0u; n < static_cast<size_t>(MaxCols) && addr < mem_size; n++, addr++)
             {
                 float byte_pos_x = s.PosHexStart + s.HexCellWidth * static_cast<float>(n);
                 ImGui::SameLine(byte_pos_x);
 
                 // Draw highlight
                 bool is_highlight_from_user_range = (addr >= HighlightMin && addr < HighlightMax);
-                bool is_highlight_from_user_func = (HighlightFn && HighlightFn(mem_data, addr));
-                if (is_highlight_from_user_range || is_highlight_from_user_func)
+                if (is_highlight_from_user_range)
                 {
                     ImVec2 pos = ImGui::GetCursorScreenPos();
                     float highlight_width = s.GlyphWidth * 2;
-                    bool is_next_byte_highlighted =  (addr + 1 < mem_size) && ((HighlightMax != std::numeric_limits<std::size_t>::max() && addr + 1 < HighlightMax) || (HighlightFn && HighlightFn(mem_data, addr + 1)));
-                    if (is_next_byte_highlighted || (n + 1 == Cols))
+                    bool is_next_byte_highlighted =  (addr + 1 < mem_size) && ((HighlightMax != std::numeric_limits<std::size_t>::max() && addr + 1 < HighlightMax));
+                    if (is_next_byte_highlighted || (n + 1 == MaxCols))
                     {
                         highlight_width = s.HexCellWidth;
                     }
@@ -177,7 +181,7 @@ struct disassembly_view
                         ImGui::SetKeyboardFocusHere();
                         ImGui::CaptureKeyboardFromApp(true);
                         sprintf(AddrInputBuf, (OptUpperCaseHex ? "%0*zX" : "%0*zx"), s.AddrDigitsCount, base_display_addr + addr);
-                        sprintf(DataInputBuf, (OptUpperCaseHex ? "%02X" : "%02x"), ReadFn ? ReadFn(mem_data, addr) : mem_data[addr]);
+                        sprintf(DataInputBuf, (OptUpperCaseHex ? "%02X" : "%02x"), mem_data[addr]);
                     }
                     ImGui::PushItemWidth(s.GlyphWidth * 2);
                     struct UserData
@@ -202,7 +206,7 @@ struct disassembly_view
                         int    CursorPos = -1;               // Output
                     };
                     UserData user_data;
-                    sprintf(user_data.CurrentBufOverwrite, (OptUpperCaseHex ? "%02X" : "%02x"), ReadFn ? ReadFn(mem_data, addr) : mem_data[addr]);
+                    sprintf(user_data.CurrentBufOverwrite, (OptUpperCaseHex ? "%02X" : "%02x"), mem_data[addr]);
                     ImGuiInputTextFlags flags = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_NoHorizontalScroll | ImGuiInputTextFlags_AlwaysInsertMode | ImGuiInputTextFlags_CallbackAlways; // NOLINT(hicpp-signed-bitwise)
                     if (ImGui::InputText("##data", DataInputBuf, 32, flags, UserData::Callback, &user_data))
                         data_write = data_next = true;
@@ -217,9 +221,6 @@ struct disassembly_view
                     unsigned int data_input_value = 0;
                     if (data_write && sscanf(DataInputBuf, "%X", &data_input_value) == 1)
                     {
-                        if (WriteFn)
-                            WriteFn(mem_data, addr, static_cast<ImU8>(data_input_value));
-                        else
                             mem_data[addr] = static_cast<ImU8>(data_input_value);
                     }
                     ImGui::PopID();
@@ -227,7 +228,7 @@ struct disassembly_view
                 else
                 {
                     // NB: The trailing space is not visible but ensure there's no gap that the mouse cannot click on.
-                    ImU8 b = ReadFn ? ReadFn(mem_data, addr) : mem_data[addr];
+                    ImU8 b = mem_data[addr];
 
                     if (b == 0 && OptGreyOutZeroes)
                         ImGui::TextDisabled("00 ");
@@ -240,6 +241,18 @@ struct disassembly_view
                     }
                 }
             }
+
+            // Draw disassembly view
+            ImVec2 window_pos = ImGui::GetWindowPos();
+            draw_list->AddLine(ImVec2(window_pos.x + s.PosDisasmStart - s.GlyphWidth, window_pos.y), ImVec2(window_pos.x + s.PosDisasmStart - s.GlyphWidth, window_pos.y + 9999), ImGui::GetColorU32(ImGuiCol_Border));
+
+            ImGui::SameLine(s.PosDisasmStart);
+            auto pos = ImGui::GetCursorScreenPos();
+            ImGui::PushID(line_i);
+            ImGui::InvisibleButton("disasm", ImVec2(s.PosDisasmEnd - s.PosDisasmStart, s.LineHeight));
+            ImGui::PopID();
+            const char teststr [] = "Hello";
+            ImGui::GetWindowDrawList()->AddText(pos, ImGui::GetColorU32(ImGuiCol_Text), teststr, teststr+sizeof(teststr)-1);
         }
         clipper.End();
         ImGui::PopStyleVar(2);
@@ -304,7 +317,7 @@ struct disassembly_view
             if (GotoAddr < mem_size)
             {
                 ImGui::BeginChild("##scrolling");
-                ImGui::SetScrollFromPosY(ImGui::GetCursorStartPos().y + static_cast<float>(GotoAddr / Cols) * ImGui::GetTextLineHeight()); // NOLINT(bugprone-integer-division)
+                ImGui::SetScrollFromPosY(ImGui::GetCursorStartPos().y + static_cast<float>(GotoAddr / MaxCols) * ImGui::GetTextLineHeight()); // NOLINT(bugprone-integer-division)
                 ImGui::EndChild();
                 DataEditingAddr = GotoAddr;
                 DataEditingTakeFocus = true;

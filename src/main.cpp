@@ -107,7 +107,7 @@ int main() {
         mem_edit_1.DrawWindow("Memory Editor", prog.data(), prog.size()*sizeof(prog[0]), 0x0000);
 
         static disassembly_view disasm_view;
-        disasm_view.DrawWindow("Disassembly view", prog.data(), prog.size()*sizeof(prog[0]), 0x0000);
+        disasm_view.DrawWindow("Disassembly view", prog.data(), prog.size()*sizeof(prog[0]), 0x0400);
 
 
         window.clear();
