@@ -16,10 +16,7 @@ struct disassembly_view
     bool            OptGreyOutZeroes = true;                    // display null/zero bytes using the TextDisabled color.
     bool            OptUpperCaseHex = true;                     // display hexadecimal values as "FF" instead of "ff".
     unsigned int    OptAddrDigitsCount = 0;                     // number of addr digits to display (default calculated based on maximum displayed addr).
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wold-style-cast"
     ImU32           HighlightColor = IM_COL32(255, 255, 255, 50); // background color of highlighted bytes. NOLINT(hicpp-signed-bitwise)
-#pragma clang diagnostic pop
 
     // [Internal State]
     bool            ContentsWidthChanged = false;

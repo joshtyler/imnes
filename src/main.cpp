@@ -3,8 +3,8 @@
 #include <fstream>
 #include <vector>
 
-#include "imgui.h"
-#include "imgui-SFML.h"
+#include <imgui.h>
+#include <imgui-SFML.h>
 
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
@@ -13,10 +13,11 @@
 
 #include <fmt/core.h>
 
-#include "imgui_memory_editor.h"
+#include <imgui_memory_editor.h>
 #include "disassembly_view.h"
 
 #include "Cpu6502_instructions.h"
+#include "ines.h"
 
 size_t getSize(const std::string &filename)
 {
@@ -55,6 +56,7 @@ int main() {
 
     std::cout << prog.size() << std::endl;
 
+    /*
     for(size_t i=0x400; i<prog.size(); )
     {
         auto instr = instructions[prog[i]];
@@ -73,6 +75,9 @@ int main() {
 
         i+= instr.bytes;
     }
+     */
+
+    Ines ines("test_image.nes");
 
     // imGUI SFML Example
     sf::RenderWindow window(sf::VideoMode(1900, 1100), "ImGui + SFML = <3");
@@ -104,10 +109,10 @@ int main() {
         //ImGui::End();
 
         static MemoryEditor mem_edit_1;
-        mem_edit_1.DrawWindow("Memory Editor", prog.data(), prog.size()*sizeof(prog[0]), 0x0000);
+        mem_edit_1.DrawWindow("Memory Editor", ines.getPrgRom().data(), ines.getPrgRom().size(), 0x0000);
 
         static disassembly_view disasm_view;
-        disasm_view.DrawWindow("Disassembly view", prog.data(), prog.size()*sizeof(prog[0]), 0x0400);
+        disasm_view.DrawWindow("Disassembly view", ines.getPrgRom().data(), ines.getPrgRom().size(), 0x0000);
 
 
         window.clear();

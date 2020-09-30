@@ -5,6 +5,7 @@ set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(sfml)
 add_subdirectory(magic_enum)
 add_subdirectory(fmt)
+add_subdirectory(imgui_memory_editor)
 
 set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/imgui")
 set(IMGUI_SFML_IMGUI_DEMO ON) # Needed to get ShowDemoWindow to work
